@@ -255,6 +255,7 @@ button:disabled {
   border-radius: 9px;
   margin-bottom: 16px;
   font-size: 14px;
+  border: 1px solid #fecdd3;
 }
 
 .error button {
@@ -263,6 +264,16 @@ button:disabled {
   color: inherit;
   padding: 0;
   font-size: 16px;
+}
+
+.success-banner {
+  padding: 12px 15px;
+  background: #ecfdf5;
+  color: #065f46;
+  border-radius: 9px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  border: 1px solid #a7f3d0;
 }
 
 @media(max-width: 780px) {
@@ -286,6 +297,9 @@ button:disabled {
   }
 }
 
+/* ==========================================================================
+   AUTH / LOGIN PAGE STYLES
+   ========================================================================== */
 .login-page {
   min-height: 100vh;
   display: grid;
@@ -294,7 +308,7 @@ button:disabled {
 }
 
 .login-card {
-  width: min(100%, 420px);
+  width: min(100%, 430px);
   padding: 32px;
   background: white;
   border: 1px solid #e3e9f1;
@@ -303,18 +317,65 @@ button:disabled {
 }
 
 .login-card h1 {
-  margin-bottom: 5px;
+  margin-bottom: 6px;
+  font-size: 26px;
 }
 
 .login-card label {
   display: block;
-  margin-top: 20px;
+  margin-top: 16px;
   font-weight: 600;
+  font-size: 14px;
 }
 
 .login-card button[type="submit"] {
   width: 100%;
-  margin-top: 24px;
+  margin-top: 20px;
+  padding: 12px;
+  font-size: 15px;
+}
+
+.auth-tabs {
+  display: flex;
+  background: #f1f5f9;
+  border-radius: 8px;
+  padding: 4px;
+  margin: 18px 0;
+  gap: 4px;
+}
+
+.auth-tab {
+  flex: 1;
+  background: transparent;
+  color: #64748b;
+  border: 0;
+  padding: 8px 12px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.auth-tab.active {
+  background: #ffffff;
+  color: #172033;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.link-button {
+  background: none;
+  border: none;
+  color: #315cc6;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  font-size: inherit;
+  text-decoration: underline;
+}
+
+.link-button:hover {
+  color: #1e3a8a;
 }
 
 .header-actions {
@@ -329,4 +390,3 @@ button:disabled {
     flex-direction: column;
   }
 }
-
