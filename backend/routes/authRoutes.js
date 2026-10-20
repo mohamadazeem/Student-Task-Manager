@@ -14,6 +14,9 @@ const router = express.Router();
 
 const registerValidation = [
     body("name")
+        .isString()
+        .withMessage("Name must be text")
+        .bail()
         .trim()
         .notEmpty()
         .withMessage("Name is required")
@@ -21,6 +24,9 @@ const registerValidation = [
         .withMessage("Name must not exceed 100 characters"),
 
     body("email")
+        .isString()
+        .withMessage("Email must be text")
+        .bail()
         .trim()
         .notEmpty()
         .withMessage("Email is required")
@@ -28,6 +34,9 @@ const registerValidation = [
         .withMessage("Please provide a valid email"),
 
     body("password")
+        .isString()
+        .withMessage("Password must be text")
+        .bail()
         .notEmpty()
         .withMessage("Password is required")
         .isLength({ min: 6 })
@@ -41,6 +50,9 @@ const registerValidation = [
 
 const loginValidation = [
     body("email")
+        .isString()
+        .withMessage("Email must be text")
+        .bail()
         .trim()
         .notEmpty()
         .withMessage("Email is required")
@@ -48,6 +60,9 @@ const loginValidation = [
         .withMessage("Please provide a valid email"),
 
     body("password")
+        .isString()
+        .withMessage("Password must be text")
+        .bail()
         .notEmpty()
         .withMessage("Password is required")
 ];

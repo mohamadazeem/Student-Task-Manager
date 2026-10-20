@@ -19,6 +19,9 @@ router.param("id", (req, res, next, id) => {
 
 const taskValidation = [
     body("title")
+        .isString()
+        .withMessage("Title must be text")
+        .bail()
         .trim()
         .notEmpty()
         .withMessage("Title is required")

@@ -67,7 +67,18 @@ export default function App({ session, onLogout }) {
   }
 
   useEffect(() => {
-    loadTasks()
+    let active = true
+    api('/tasks')
+      .then((data) => {
+        if (!Array.isArray(data)) throw new Error('Expected an array from GET /api/tasks')
+        if (active) {
+          setTasks(data)
+          setError('')
+        }
+      })
+      .catch((err) => { if (active) setError(err.message) })
+      .finally(() => { if (active) setLoading(false) })
+    return () => { active = false }
   }, [])
 
   async function save(event) {
