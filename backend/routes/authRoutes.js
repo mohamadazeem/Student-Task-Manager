@@ -2,7 +2,7 @@ const express = require("express");
 const { body } = require("express-validator");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const pool = require("../config/db");
+const User = require("../models/User");
 const validate = require("../middleware/validationMiddleware");
 
 const router = express.Router();
@@ -70,12 +70,9 @@ router.post(
             } = req.body;
 
             // Check if user already exists
-            const existingUser = await pool.query(
-                "SELECT id FROM users WHERE email = $1",
-                [email]
-            );
+            const existingUser = await User.exists({ email: email.trim().toLowerCase() });
 
-            if (existingUser.rows.length > 0) {
+            if (existingUser) {
                 return res.status(400).json({
                     error: "Email already registered"
                 });
@@ -85,24 +82,15 @@ router.post(
             const hashedPassword = await bcrypt.hash(password, 10);
 
             // Create user
-            const result = await pool.query(
-                `INSERT INTO users (name, email, password)
-                 VALUES ($1, $2, $3)
-                 RETURNING id, name, email`,
-                [
-                    name,
-                    email,
-                    hashedPassword
-                ]
-            );
+            const user = await User.create({ name, email: email.trim().toLowerCase(), password: hashedPassword });
 
             res.status(201).json({
                 message: "User registered successfully",
-                user: result.rows[0]
+                user: { id: user.id, name: user.name, email: user.email }
             });
 
         } catch (error) {
-            console.error("Registration error:", error);
+            if (error.code === 11000) return res.status(400).json({ error: "Email already registered" });
 
             res.status(500).json({
                 error: "Registration failed"
@@ -128,18 +116,15 @@ router.post(
             } = req.body;
 
             // Find user by email
-            const result = await pool.query(
-                "SELECT * FROM users WHERE email = $1",
-                [email]
-            );
+            const user = await User.findOne({ email: email.trim().toLowerCase() }).select("+password");
 
-            if (result.rows.length === 0) {
+            if (!user) {
                 return res.status(401).json({
                     error: "Invalid email or password"
                 });
             }
 
-            const user = result.rows[0];
+
 
             // Compare password
             const passwordMatch = await bcrypt.compare(
@@ -176,8 +161,6 @@ router.post(
             });
 
         } catch (error) {
-            console.error("Login error:", error);
-
             res.status(500).json({
                 error: "Login failed"
             });

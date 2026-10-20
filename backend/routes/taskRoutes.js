@@ -1,10 +1,16 @@
 const express = require("express");
 const { body } = require("express-validator");
-const pool = require("../config/db");
+const Task = require("../models/Task");
+const { isObjectIdOrHexString } = require("mongoose");
 const authenticateToken = require("../middleware/authMiddleware");
 const validate = require("../middleware/validationMiddleware");
 
 const router = express.Router();
+router.use(authenticateToken);
+router.param("id", (req, res, next, id) => {
+    if (!isObjectIdOrHexString(id)) return res.status(400).json({ error: "Invalid task ID" });
+    next();
+});
 
 
 // ========================================
@@ -47,21 +53,13 @@ const taskValidation = [
 // GET ALL TASKS - LOGGED IN USER ONLY
 // ========================================
 
-router.get("/", authenticateToken, async (req, res) => {
+router.get("/", async (req, res) => {
     try {
-        const result = await pool.query(
-            `SELECT *
-             FROM tasks
-             WHERE user_id = $1
-             ORDER BY created_at DESC`,
-            [req.user.userId]
-        );
+        const tasks = await Task.find({ userId: req.user.userId }).sort({ createdAt: -1 });
 
-        res.json(result.rows);
+        res.json(tasks);
 
     } catch (error) {
-        console.error("Error fetching tasks:", error);
-
         res.status(500).json({
             error: "Failed to fetch tasks"
         });
@@ -73,29 +71,21 @@ router.get("/", authenticateToken, async (req, res) => {
 // GET ONE TASK - LOGGED IN USER ONLY
 // ========================================
 
-router.get("/:id", authenticateToken, async (req, res) => {
+router.get("/:id", async (req, res) => {
     try {
         const { id } = req.params;
 
-        const result = await pool.query(
-            `SELECT *
-             FROM tasks
-             WHERE id = $1
-             AND user_id = $2`,
-            [id, req.user.userId]
-        );
+        const task = await Task.findOne({ _id: id, userId: req.user.userId });
 
-        if (result.rows.length === 0) {
+        if (!task) {
             return res.status(404).json({
                 error: "Task not found"
             });
         }
 
-        res.json(result.rows[0]);
+        res.json(task);
 
     } catch (error) {
-        console.error("Error fetching task:", error);
-
         res.status(500).json({
             error: "Failed to fetch task"
         });
@@ -109,7 +99,6 @@ router.get("/:id", authenticateToken, async (req, res) => {
 
 router.post(
     "/",
-    authenticateToken,
     taskValidation,
     validate,
     async (req, res) => {
@@ -124,26 +113,11 @@ router.post(
 
             const userId = req.user.userId;
 
-            const result = await pool.query(
-                `INSERT INTO tasks
-                (user_id, title, description, deadline, priority, status)
-                VALUES ($1, $2, $3, $4, $5, $6)
-                RETURNING *`,
-                [
-                    userId,
-                    title,
-                    description,
-                    deadline,
-                    priority,
-                    status || "Pending"
-                ]
-            );
+            const task = await Task.create({ userId, title, description, deadline, priority, status });
 
-            res.status(201).json(result.rows[0]);
+            res.status(201).json(task);
 
         } catch (error) {
-            console.error("Error creating task:", error);
-
             res.status(500).json({
                 error: "Failed to create task"
             });
@@ -158,7 +132,6 @@ router.post(
 
 router.put(
     "/:id",
-    authenticateToken,
     taskValidation,
     validate,
     async (req, res) => {
@@ -173,38 +146,27 @@ router.put(
                 status
             } = req.body;
 
-            const result = await pool.query(
-                `UPDATE tasks
-                 SET title = $1,
-                     description = $2,
-                     deadline = $3,
-                     priority = $4,
-                     status = $5
-                 WHERE id = $6
-                 AND user_id = $7
-                 RETURNING *`,
-                [
+            const task = await Task.findOneAndUpdate(
+                { _id: id, userId: req.user.userId },
+                { $set: {
                     title,
-                    description,
-                    deadline,
-                    priority,
-                    status,
-                    id,
-                    req.user.userId
-                ]
+                    description: description ?? "",
+                    deadline: deadline ?? null,
+                    priority: priority ?? "Medium",
+                    status: status ?? "Pending"
+                } },
+                { new: true, runValidators: true }
             );
 
-            if (result.rows.length === 0) {
+            if (!task) {
                 return res.status(404).json({
                     error: "Task not found"
                 });
             }
 
-            res.json(result.rows[0]);
+            res.json(task);
 
         } catch (error) {
-            console.error("Error updating task:", error);
-
             res.status(500).json({
                 error: "Failed to update task"
             });
@@ -217,19 +179,13 @@ router.put(
 // DELETE TASK
 // ========================================
 
-router.delete("/:id", authenticateToken, async (req, res) => {
+router.delete("/:id", async (req, res) => {
     try {
         const { id } = req.params;
 
-        const result = await pool.query(
-            `DELETE FROM tasks
-             WHERE id = $1
-             AND user_id = $2
-             RETURNING *`,
-            [id, req.user.userId]
-        );
+        const task = await Task.findOneAndDelete({ _id: id, userId: req.user.userId });
 
-        if (result.rows.length === 0) {
+        if (!task) {
             return res.status(404).json({
                 error: "Task not found"
             });
@@ -237,12 +193,10 @@ router.delete("/:id", authenticateToken, async (req, res) => {
 
         res.json({
             message: "Task deleted successfully",
-            task: result.rows[0]
+            task: task
         });
 
     } catch (error) {
-        console.error("Error deleting task:", error);
-
         res.status(500).json({
             error: "Failed to delete task"
         });

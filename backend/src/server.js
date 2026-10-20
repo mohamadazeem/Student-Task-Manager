@@ -1,61 +1,25 @@
+const path = require("path");
+require("dotenv").config({ path: path.resolve(__dirname, "../.env"), quiet: true });
 const express = require("express");
 const cors = require("cors");
-
-const pool = require("../config/db");
-
-const userRoutes = require("../routes/userRoutes");
-const taskRoutes = require("../routes/taskRoutes");
-const authRoutes = require("../routes/authRoutes");
-
-const errorHandler = require("../middleware/errorMiddleware");
-
+const connectDB = require("../config/db");
 const app = express();
-
-
-// ========================================
-// MIDDLEWARE
-// ========================================
-
 app.use(cors());
-
 app.use(express.json());
-
-
-// ========================================
-// ROUTES
-// ========================================
-
-app.use("/api/users", userRoutes);
-app.use("/api/tasks", taskRoutes);
-app.use("/api/auth", authRoutes);
-
-
-// ========================================
-// ERROR HANDLER
-// ========================================
-
-app.use(errorHandler);
-
-
-// ========================================
-// SERVER
-// ========================================
-
+app.use("/api/users", require("../routes/userRoutes"));
+app.use("/api/tasks", require("../routes/taskRoutes"));
+app.use("/api/auth", require("../routes/authRoutes"));
+app.use(require("../middleware/errorMiddleware"));
 const PORT = process.env.PORT || 5000;
-
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-});
-
-
-// ========================================
-// DATABASE CONNECTION TEST
-// ========================================
-
-pool.query("SELECT NOW()")
-    .then(() => {
-        console.log("PostgreSQL connected successfully!");
-    })
-    .catch((error) => {
-        console.error("PostgreSQL connection failed:", error);
-    });
+async function startServer() {
+  if (!process.env.JWT_SECRET) throw new Error("JWT_SECRET is required");
+  await connectDB();
+  return app.listen(PORT, () => console.log("Server running on port " + PORT));
+}
+if (require.main === module) {
+  startServer().catch(() => {
+    console.error("Startup failed. Check database access, MONGODB_URI and JWT_SECRET configuration.");
+    process.exit(1);
+  });
+}
+module.exports = { app, startServer };
