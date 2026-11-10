@@ -12,31 +12,33 @@ From the project directory, run:
 docker compose up --build -d
 ```
 
-Open http://localhost:3000. The API runs at http://localhost:5000.
-The backend connects to the MongoDB container at `mongodb://mongodb:27017`.
-It waits for MongoDB to become healthy before starting.
+- **Frontend**: http://localhost:3000
+- **Backend API**: http://localhost:5000
+- **pgAdmin 4 (Database GUI)**: http://localhost:5050
 
-MongoDB stores data in the `mongodb_data` Docker volume. `docker compose down`
-keeps this data; `docker compose down -v` deletes it. This local development
-database has no authentication and its published port is bound to localhost.
-Existing Atlas data is not copied into the local database.
+### pgAdmin GUI Access
+
+- **URL**: http://localhost:5050
+- **Email**: `admin@admin.com`
+- **Password**: `admin`
+- The PostgreSQL database ("Student Task PostgreSQL") is pre-configured in the server tree pointing to `postgres:5432` (`student_user` / `AZMazm123@`).
+
+PostgreSQL stores data in the `postgres_data` Docker volume. pgAdmin preferences are stored in `pgadmin_data`. `docker compose down` keeps this data; `docker compose down -v` deletes it.
 
 ## Run the backend outside Docker
 
-Start only the database:
+Start the database and pgAdmin:
 
 ```sh
-docker compose up -d mongodb
+docker compose up -d postgres pgadmin
 ```
 
-Use `MONGODB_URI=mongodb://127.0.0.1:27017` in `backend/.env`, with
-`DB_NAME=student_task_manager` and your existing `JWT_SECRET`. Then run:
+Configure PostgreSQL credentials in `backend/.env` (default: `DB_HOST=127.0.0.1`, `DB_PORT=5432`, `DB_NAME=student_task_manager`, `DB_USER=student_user`, `DB_PASSWORD=AZMazm123@`) and your existing `JWT_SECRET`. Then run:
 
 ```sh
 cd backend
-npm ci
+npm install
 npm run dev
 ```
 
-Docker Compose overrides the connection URI with the database service hostname
-when running the backend in its container.
+Docker Compose automatically overrides `DB_HOST: postgres` and `DB_PORT: 5432` with the database service hostname when running the backend in its container.

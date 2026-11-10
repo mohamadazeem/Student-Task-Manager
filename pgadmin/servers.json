@@ -1,0 +1,13 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "Student Task PostgreSQL",
+      "Group": "Servers",
+      "Host": "postgres",
+      "Port": 5432,
+      "MaintenanceDB": "student_task_manager",
+      "Username": "student_user",
+      "SSLMode": "prefer"
+    }
+  }
+}

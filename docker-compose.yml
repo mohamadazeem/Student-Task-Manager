@@ -1,4 +1,3 @@
-
 services:
   frontend:
     build:
@@ -21,26 +20,47 @@ services:
     env_file:
       - ./backend/.env
     environment:
-      MONGODB_URI: mongodb://mongodb:27017
+      DB_HOST: postgres
+      DB_PORT: 5432
     depends_on:
-      mongodb:
+      postgres:
         condition: service_healthy
     restart: unless-stopped
 
-  mongodb:
-    image: mongo:8.0
-    container_name: student-task-mongodb
+  postgres:
+    image: postgres:17
+    container_name: student-task-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-student_task_manager}
+      POSTGRES_USER: ${POSTGRES_USER:-student_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-AZMazm123@}
     ports:
-      - "127.0.0.1:27017:27017"
+      - "5432:5432"
     volumes:
-      - mongodb_data:/data/db
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand({ ping: 1 }).ok"]
-      interval: 10s
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-student_user} -d $${POSTGRES_DB:-student_task_manager}"]
+      interval: 5s
       timeout: 5s
-      retries: 5
-      start_period: 10s
+      retries: 10
+    restart: unless-stopped
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: student-task-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@admin.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+    volumes:
+      - ./pgadmin/servers.json:/pgadmin4/servers.json:ro
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:
-  mongodb_data:
+  postgres_data:
+  pgadmin_data:

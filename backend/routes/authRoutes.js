@@ -2,7 +2,7 @@ const express = require("express");
 const { body } = require("express-validator");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const User = require("../models/User");
+const pool = require("../config/db");
 const validate = require("../middleware/validationMiddleware");
 
 const router = express.Router();
@@ -84,10 +84,15 @@ router.post(
                 password
             } = req.body;
 
-            // Check if user already exists
-            const existingUser = await User.exists({ email: email.trim().toLowerCase() });
+            const normalizedEmail = email.trim().toLowerCase();
 
-            if (existingUser) {
+            // Check if user already exists
+            const existingUser = await pool.query(
+                "SELECT id FROM users WHERE email = $1",
+                [normalizedEmail]
+            );
+
+            if (existingUser.rows.length > 0) {
                 return res.status(400).json({
                     error: "Email already registered"
                 });
@@ -97,7 +102,14 @@ router.post(
             const hashedPassword = await bcrypt.hash(password, 10);
 
             // Create user
-            const user = await User.create({ name, email: email.trim().toLowerCase(), password: hashedPassword });
+            const result = await pool.query(
+                `INSERT INTO users (name, email, password)
+                 VALUES ($1, $2, $3)
+                 RETURNING id, name, email`,
+                [name.trim(), normalizedEmail, hashedPassword]
+            );
+
+            const user = result.rows[0];
 
             res.status(201).json({
                 message: "User registered successfully",
@@ -105,7 +117,9 @@ router.post(
             });
 
         } catch (error) {
-            if (error.code === 11000) return res.status(400).json({ error: "Email already registered" });
+            if (error.code === "23505") {
+                return res.status(400).json({ error: "Email already registered" });
+            }
 
             res.status(500).json({
                 error: "Registration failed"
@@ -130,16 +144,21 @@ router.post(
                 password
             } = req.body;
 
-            // Find user by email
-            const user = await User.findOne({ email: email.trim().toLowerCase() }).select("+password");
+            const normalizedEmail = email.trim().toLowerCase();
 
-            if (!user) {
+            // Find user by email
+            const result = await pool.query(
+                "SELECT id, name, email, password FROM users WHERE email = $1",
+                [normalizedEmail]
+            );
+
+            if (result.rows.length === 0) {
                 return res.status(401).json({
                     error: "Invalid email or password"
                 });
             }
 
-
+            const user = result.rows[0];
 
             // Compare password
             const passwordMatch = await bcrypt.compare(

@@ -1,14 +1,16 @@
 const express = require("express");
 const { body } = require("express-validator");
-const Task = require("../models/Task");
-const { isObjectIdOrHexString } = require("mongoose");
+const pool = require("../config/db");
 const authenticateToken = require("../middleware/authMiddleware");
 const validate = require("../middleware/validationMiddleware");
 
 const router = express.Router();
 router.use(authenticateToken);
+
 router.param("id", (req, res, next, id) => {
-    if (!isObjectIdOrHexString(id)) return res.status(400).json({ error: "Invalid task ID" });
+    if (!/^\d+$/.test(id) || Number(id) <= 0) {
+        return res.status(400).json({ error: "Invalid task ID" });
+    }
     next();
 });
 
@@ -34,7 +36,7 @@ const taskValidation = [
         .withMessage("Description must be text"),
 
     body("deadline")
-        .optional()
+        .optional({ values: "falsy" })
         .isISO8601()
         .withMessage("Deadline must be a valid date"),
 
@@ -46,9 +48,7 @@ const taskValidation = [
     body("status")
         .optional()
         .isIn(["Pending", "In Progress", "Completed"])
-        .withMessage(
-            "Status must be Pending, In Progress, or Completed"
-        )
+        .withMessage("Status must be Pending, In Progress, or Completed")
 ];
 
 
@@ -58,9 +58,15 @@ const taskValidation = [
 
 router.get("/", async (req, res) => {
     try {
-        const tasks = await Task.find({ userId: req.user.userId }).sort({ createdAt: -1 });
+        const result = await pool.query(
+            `SELECT *
+             FROM tasks
+             WHERE user_id = $1
+             ORDER BY created_at DESC`,
+            [req.user.userId]
+        );
 
-        res.json(tasks);
+        res.json(result.rows);
 
     } catch (error) {
         res.status(500).json({
@@ -78,15 +84,21 @@ router.get("/:id", async (req, res) => {
     try {
         const { id } = req.params;
 
-        const task = await Task.findOne({ _id: id, userId: req.user.userId });
+        const result = await pool.query(
+            `SELECT *
+             FROM tasks
+             WHERE id = $1
+             AND user_id = $2`,
+            [id, req.user.userId]
+        );
 
-        if (!task) {
+        if (result.rows.length === 0) {
             return res.status(404).json({
                 error: "Task not found"
             });
         }
 
-        res.json(task);
+        res.json(result.rows[0]);
 
     } catch (error) {
         res.status(500).json({
@@ -115,10 +127,27 @@ router.post(
             } = req.body;
 
             const userId = req.user.userId;
+            const taskDeadline = deadline ? deadline : null;
+            const taskDescription = description || "";
+            const taskPriority = priority || "Medium";
+            const taskStatus = status || "Pending";
 
-            const task = await Task.create({ userId, title, description, deadline, priority, status });
+            const result = await pool.query(
+                `INSERT INTO tasks
+                (user_id, title, description, deadline, priority, status)
+                VALUES ($1, $2, $3, $4, $5, $6)
+                RETURNING *`,
+                [
+                    userId,
+                    title.trim(),
+                    taskDescription,
+                    taskDeadline,
+                    taskPriority,
+                    taskStatus
+                ]
+            );
 
-            res.status(201).json(task);
+            res.status(201).json(result.rows[0]);
 
         } catch (error) {
             res.status(500).json({
@@ -149,25 +178,40 @@ router.put(
                 status
             } = req.body;
 
-            const task = await Task.findOneAndUpdate(
-                { _id: id, userId: req.user.userId },
-                { $set: {
-                    title,
-                    description: description ?? "",
-                    deadline: deadline ?? null,
-                    priority: priority ?? "Medium",
-                    status: status ?? "Pending"
-                } },
-                { new: true, runValidators: true }
+            const taskDeadline = deadline ? deadline : null;
+            const taskDescription = description ?? "";
+            const taskPriority = priority ?? "Medium";
+            const taskStatus = status ?? "Pending";
+
+            const result = await pool.query(
+                `UPDATE tasks
+                 SET title = $1,
+                     description = $2,
+                     deadline = $3,
+                     priority = $4,
+                     status = $5,
+                     updated_at = CURRENT_TIMESTAMP
+                 WHERE id = $6
+                 AND user_id = $7
+                 RETURNING *`,
+                [
+                    title.trim(),
+                    taskDescription,
+                    taskDeadline,
+                    taskPriority,
+                    taskStatus,
+                    id,
+                    req.user.userId
+                ]
             );
 
-            if (!task) {
+            if (result.rows.length === 0) {
                 return res.status(404).json({
                     error: "Task not found"
                 });
             }
 
-            res.json(task);
+            res.json(result.rows[0]);
 
         } catch (error) {
             res.status(500).json({
@@ -186,9 +230,15 @@ router.delete("/:id", async (req, res) => {
     try {
         const { id } = req.params;
 
-        const task = await Task.findOneAndDelete({ _id: id, userId: req.user.userId });
+        const result = await pool.query(
+            `DELETE FROM tasks
+             WHERE id = $1
+             AND user_id = $2
+             RETURNING *`,
+            [id, req.user.userId]
+        );
 
-        if (!task) {
+        if (result.rows.length === 0) {
             return res.status(404).json({
                 error: "Task not found"
             });
@@ -196,7 +246,7 @@ router.delete("/:id", async (req, res) => {
 
         res.json({
             message: "Task deleted successfully",
-            task: task
+            task: result.rows[0]
         });
 
     } catch (error) {
