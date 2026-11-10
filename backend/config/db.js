@@ -7,7 +7,7 @@ async function connectDB() {
     dbName: process.env.DB_NAME || "student_task_manager",
   });
 
-  console.log("MongoDB Atlas connected successfully!");
+  console.log("MongoDB connected successfully!");
 }
 
 module.exports = connectDB;
