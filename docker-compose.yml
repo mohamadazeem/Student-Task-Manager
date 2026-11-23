@@ -1,5 +1,6 @@
 services:
   frontend:
+    image: ghcr.io/mohamadazeem/student-task-frontend:latest
     build:
       context: ./frontend
       dockerfile: Dockerfile
@@ -11,6 +12,7 @@ services:
     restart: unless-stopped
 
   backend:
+    image: ghcr.io/mohamadazeem/student-task-backend:latest
     build:
       context: ./backend
       dockerfile: Dockerfile

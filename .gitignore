@@ -1,4 +1,14 @@
-node_modules
-dist
+# Dependencies and build files
+node_modules/
+dist/
+
+# Environment files and secrets
 .env
-.env.local
+.env.*
+!.env.example
+
+# Temporary and backup files
+*.save
+*.jar
+docker-compose.yml.backup
+
